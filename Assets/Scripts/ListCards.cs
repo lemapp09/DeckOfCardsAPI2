@@ -15,7 +15,7 @@ public class ListCards : MonoBehaviour
     IEnumerator GetListOfCards()
     {
         string deckId = GameManager.Instance.GetDeckID();
-        string pileName = ""; // ""main";
+        // string pileName = ""; // ""main";
         string url = $"https://deckofcardsapi.com/api/deck/{deckId}/list/";
 
         using (UnityWebRequest webRequest = UnityWebRequest.Get(url))
