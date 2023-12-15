@@ -365,6 +365,7 @@
 "Assets/Scripts/Managers/UIManager.cs"
 "Assets/Scripts/NewDeckCreator.cs"
 "Assets/Scripts/PartialDeckCreator.cs"
+"Assets/Scripts/TVMaze/TVMazeAPISearch.cs"
 "Assets/Scripts/UI/BackgroundFade.cs"
 "Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark01.cs"
 "Assets/TextMesh Pro/Examples & Extras/Scripts/Benchmark01_UGUI.cs"
