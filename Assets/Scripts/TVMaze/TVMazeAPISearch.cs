@@ -1,55 +1,51 @@
 using System;
 using UnityEngine;
-using UnityEngine.Networking;
 using TMPro;
 using UnityEngine.UI;
-using Newtonsoft.Json;
 using System.Collections;
 using System.Collections.Generic;
+using Michsky.UI.Heat;
+using Unity.VisualScripting;
 
 public class TVMazeAPISearch : MonoBehaviour
 {
+    #region Variables
+    public float maxImageSizing = 800;
     public TMP_InputField showTitleInput;
-    public GameObject resultPanel; // Panel to hold result buttons
-    public GameObject detailPanel; // Panel to display show details
+    [SerializeField] private PanelManager searchPanels; // 0 = results, 1 = details
+    public GameObject resultContent; // content area to hold result buttons
+    public GameObject detailContent; //content area to display show details
     public TMP_Text detailText; // Text element to display details
-    public Button resultButtonPrefab; // Prefab for result buttons
+    public ButtonManager resultButtonPrefab; // Prefab for result buttons
     public RawImage tvshowImage; // Assign this in the Inspector
-    private Dictionary<int, Show> showsDictionary = new Dictionary<int, Show>();
-
-    public void OnSearchButtonClicked() {
-        string showTitle = showTitleInput.text;
-        StartCoroutine(SearchShow(showTitle));
+    private Dictionary<int, IShowSearch.Show> showsDictionary = new Dictionary<int, IShowSearch.Show>();
+    #endregion
+    
+    void OnEnable() {        
+        resultContent.SetActive(false);
+        searchPanels.gameObject.SetActive(false);
+        StartCoroutine(SelectInputField());
     }
 
-    // Search Buttons caused the initial contact with the search API.
-    // if there are errors, they are recorded, otherwise result buttons are made
-    IEnumerator SearchShow(string showTitle) {
-        string url = $"https://api.tvmaze.com/search/shows?q={showTitle}";
+    public void OnSearchButtonClicked() {       
+        searchPanels.gameObject.SetActive(true);
         ClearResultPanel();
-
-        using (UnityWebRequest webRequest = UnityWebRequest.Get(url)) {
-            yield return webRequest.SendWebRequest();
-            if (webRequest.result == UnityWebRequest.Result.ConnectionError || 
-                webRequest.result == UnityWebRequest.Result.ProtocolError) {
-                Debug.LogError("Error: " + webRequest.error);
-            }  else  {
-                string jsonResponse = webRequest.downloadHandler.text;
-                List<Root> shows = JsonConvert.DeserializeObject<List<Root>>(jsonResponse);
-                DisplayResults(shows);
-            }
-        }
+        string showTitle = showTitleInput.text;
+        StartCoroutine(ShowSearchAPI.SearchShow(showTitle, result =>
+        {
+            DisplayResults(result);
+        }));
     }
 
     // Previous search results are removed
     void ClearResultPanel() {
-        foreach (Transform child in resultPanel.transform) {
+        foreach (Transform child in resultContent.transform) {
             Destroy(child.gameObject);
         }
     }
 
     // The results of the initial search are displayed as buttons 
-    void DisplayResults(List<Root> shows) {
+    void DisplayResults(List<IShowSearch.ShowSearchRoot> shows) {
         // To prevent buttons from stacking on each other, this staggers their placement.
         float buttonHeight = 50f; // Height of each button
         float verticalSpacing = 10f; // Space between buttons
@@ -58,12 +54,12 @@ public class TVMazeAPISearch : MonoBehaviour
 
         // Each show is made into a button and placed on the results panel (left side)
         for (int i = 0; i < shows.Count; i++) {
-            Show show = shows[i].show;
+            IShowSearch.Show show = shows[i].show;
             showsDictionary[show.id] = show; // Store the show in the dictionary
-            Button button = Instantiate(resultButtonPrefab, resultPanel.transform);
+            ButtonManager button = Instantiate(resultButtonPrefab, resultContent.transform);
 
             // Set the button text
-            button.GetComponentInChildren<TMP_Text>().text = $"{show.name}";
+            button.buttonText = $"{show.name}";
 
             // Position the button
             RectTransform buttonRectTransform = button.GetComponent<RectTransform>();
@@ -74,8 +70,9 @@ public class TVMazeAPISearch : MonoBehaviour
 
             // Add click listener
             button.onClick.AddListener(() => DisplayShowDetails(show.id));
-
         }
+        searchPanels.GameObject().SetActive(true); // Switch to the details panel
+        resultContent.SetActive(true); // Show the results panel
     }
 
 
@@ -83,25 +80,30 @@ public class TVMazeAPISearch : MonoBehaviour
     // There is no need to call the API again, all of these data was included 
     // in the initial search.
     void DisplayShowDetails(int showId) {
-        if (!showsDictionary.TryGetValue(showId, out Show show)) {
+        // Get the show from the dictionary. 
+        // If the show is not found, an error is logged. 
+        // Note: The show ID is retrieved from the initial search
+        // unlikely not to be found
+        if (!showsDictionary.TryGetValue(showId, out IShowSearch.Show show)) {
             Debug.LogError("Show not found.");
             return;
         }
         // Remove <p> and </p> tags from the summary
         string cleanedSummary = show.summary.Replace("<p>", "").Replace("</p>", "");
-
-        // This coding grabs the image from the Internet. 
+        
+        // populate the detail panel with the show image
         // Note: Two sizes of the image are provided. This example uses the smaller, medium sized version.
-        if (!string.IsNullOrEmpty(show.image?.medium)) {
-            StartCoroutine(DownloadImage(show.image.medium));
-        }  else {
-            // Image Space made blank if there is no image
-            tvshowImage.texture = null; // or set to a default texture
+        if (show != null && show.image != null && !String.IsNullOrEmpty(show.image.medium)) {
+            PopulateImage(show.image.medium);
         }
+        
         // The supplied data is displayed. 
         // Note the special technique to display all of the Genres.
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
 
+        if(!String.IsNullOrEmpty(show.officialSite)) {
+            AppendLineIfNotEmpty(sb, "Official Site", "<link=\"MyLinkID1\">" + show.officialSite + "</link>");
+        }
         AppendLineIfNotEmpty(sb, "Name", show.name);
         AppendLineIfNotEmpty(sb, "Type", show.type);
         AppendLineIfNotEmpty(sb, "Language", show.language);
@@ -112,44 +114,57 @@ public class TVMazeAPISearch : MonoBehaviour
         AppendLineIfNotEmpty(sb, "Rating", (bool)show.rating?.average.HasValue ? show.rating.average.Value.ToString() : "");
         AppendLineIfNotEmpty(sb, "Network", show.network?.name);
         AppendLineIfNotEmpty(sb, "Country", show.network?.country?.name);
-        AppendLineIfNotEmpty(sb, "Official Site", show.officialSite);
         AppendLineIfNotEmpty(sb, "Summary", cleanedSummary); // Assuming cleanedSummary is already defined
 
         detailText.text = sb.ToString();
+        if (show.officialSite != null) {
+            detailText.GetComponent<ClickableLink>().LinkUrl = show.officialSite;
+            tvshowImage.GetComponent<ClickableLink>().LinkUrl = show.officialSite;
+        } else {
+            detailText.GetComponent<ClickableLink>().LinkUrl = "";
+            tvshowImage.GetComponent<ClickableLink>().LinkUrl = "";
+        }
+        searchPanels.OpenPanelByIndex(1); // Show the detail panel
+    }
 
-        detailPanel.SetActive(true); // Show the detail panel
+    private void PopulateImage(string imageUrl)
+    { 
+        // This coding grabs the image from the Internet. 
+        if (!string.IsNullOrEmpty(imageUrl)) {
+            StartCoroutine(DownloadImageAPI.LoadTexture(imageUrl, HandleTextureLoaded));
+        }  else {
+            // Image Space made blank if there is no image
+            tvshowImage.texture = null; // or set to a default texture
+        }
     }
     
-    IEnumerator DownloadImage(string MediaUrl) {
-        // This Method makes a call out on the web to grab an image
-        UnityWebRequest request = UnityWebRequestTexture.GetTexture(MediaUrl);
-        // wait until the image is received
-        yield return request.SendWebRequest();
-
-        // Check for errors. If any, they are recorded in the Error Log and the display image is made blank
-        if (request.result is UnityWebRequest.Result.ConnectionError or UnityWebRequest.Result.ProtocolError) {
-            Debug.Log(request.error);
-            tvshowImage.texture = null; // or set to a default texture
-        }  else  {
-            // If there is an image, it is resized to fit in the space on the screen
-            Texture2D tempTexture = DownloadHandlerTexture.GetContent(request);
-            float tempWidth = tempTexture.width;
-            float tempHeight = tempTexture.height;
-            float ratio = tempWidth / tempHeight;
-            if (tempWidth > tempHeight)
-            {
-                tempWidth = 435;
-                tempHeight = 435 / ratio;
-            }
-            else
-            {
-                tempHeight = 435;
-                tempWidth = 435 * ratio;
-            }
-            tvshowImage.rectTransform.sizeDelta = new Vector2(tempWidth, tempHeight);
-            // Image is assigned to the space on the screen
-            tvshowImage.texture = tempTexture;
+    void HandleTextureLoaded(Texture2D loadedTexture) {
+        if (loadedTexture != null) {
+            DisplayImage(loadedTexture);
+        } else {
+            // if image load fails, display no image
+            tvshowImage.texture = null;
         }
+    }
+
+    private void DisplayImage(Texture2D tempTexture) {
+        // If there is an image, it is resized to fit in the space on the screen
+        float tempWidth = tempTexture.width;
+        float tempHeight = tempTexture.height;
+        float ratio = tempWidth / tempHeight;
+        if (tempWidth > tempHeight)
+        {
+            tempWidth = maxImageSizing;
+            tempHeight = maxImageSizing / ratio;
+        }
+        else
+        {
+            tempHeight = maxImageSizing;
+            tempWidth = maxImageSizing * ratio;
+        }
+        tvshowImage.rectTransform.sizeDelta = new Vector2(tempWidth, tempHeight);
+        // Image is assigned to the space on the screen
+        tvshowImage.texture = tempTexture;
     }
     
     // This method adds an item to the display if it contains data
@@ -164,92 +179,9 @@ public class TVMazeAPISearch : MonoBehaviour
         }
     }
     
-    // Below is the coding used to Parse the API data into something useful.
-    //
-    // Generated at https://json2csharp.com/ 
-    // Root myDeserializedClass = JsonConvert.DeserializeObject<List<Root>>(myJsonResponse);
-    public class Country {
-        public string name { get; set; }
-        public string code { get; set; }
-        public string timezone { get; set; }
-    }
-
-    public class Externals {
-        public int? tvrage { get; set; }
-        public int? thetvdb { get; set; }
-        public string imdb { get; set; }
-    }
-
-    public class Image {
-        public string medium { get; set; }
-        public string original { get; set; }
-    }
-
-    public class Links
+    IEnumerator SelectInputField()
     {
-        public Self self { get; set; }
-        public Previousepisode previousepisode { get; set; }
-    }
-
-    public class Network {
-        public int id { get; set; }
-        public string name { get; set; }
-        public Country country { get; set; }
-        public string officialSite { get; set; }
-    }
-
-    public class Previousepisode {
-        public string href { get; set; }
-    }
-
-    public class Rating {
-        public double? average { get; set; }
-    }
-
-    public class Root {
-        public double score { get; set; }
-        public Show show { get; set; }
-    }
-
-    public class Schedule {
-        public string time { get; set; }
-        public List<string> days { get; set; }
-    }
-
-    public class Self {
-        public string href { get; set; }
-    }
-
-    public class Show {
-        public int id { get; set; }
-        public string url { get; set; }
-        public string name { get; set; }
-        public string type { get; set; }
-        public string language { get; set; }
-        public List<string> genres { get; set; }
-        public string status { get; set; }
-        public int? runtime { get; set; }
-        public int? averageRuntime { get; set; }
-        public string premiered { get; set; }
-        public string ended { get; set; }
-        public string officialSite { get; set; }
-        public Schedule schedule { get; set; }
-        public Rating rating { get; set; }
-        public int weight { get; set; }
-        public Network network { get; set; }
-        public WebChannel webChannel { get; set; }
-        public object dvdCountry { get; set; }
-        public Externals externals { get; set; }
-        public Image image { get; set; }
-        public string summary { get; set; }
-        public int updated { get; set; }
-        public Links _links { get; set; }
-    }
-
-    public class WebChannel {
-        public int id { get; set; }
-        public string name { get; set; }
-        public Country country { get; set; }
-        public string officialSite { get; set; }
+        yield return new WaitForEndOfFrame();
+        showTitleInput.ActivateInputField();
     }
 }
