@@ -64,6 +64,7 @@
     <Compile Include="Assets/Scripts/DeckOfCards/NewDeckCreator.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/Localization/LocalizationManager.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Elements/ProgressBarEditor.cs" />
+    <Compile Include="Assets/Scripts/TVMaze/TVMazeSearch.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/TMP_ExampleScript_01.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/TMPro_InstructionOverlay.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/VertexShakeB.cs" />
@@ -105,6 +106,7 @@
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Manager/UIManagerLogo.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/Rendering/GraphicsManager.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/HUD/QuestItemEditor.cs" />
+    <Compile Include="Assets/Scripts/TVMaze/Interfaces/IPeopleSearch.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Elements/SettingsElement.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/Animation/ImagePulse.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Elements/BoxButtonManager.cs" />
@@ -140,7 +142,6 @@
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Manager/UIManagerFontChanger.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/HUD/HUDManagerEditor.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/Animation/UIPopup.cs" />
-    <Compile Include="Assets/Scripts/TVMaze/TVMazeAPISearch.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Manager/UIManagerAudioEditor.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/Panels/ChapterIdentifier.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/TMP_TextSelector_B.cs" />
@@ -186,6 +187,7 @@
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/HUD/QuestItem.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Elements/ProgressBar.cs" />
     <Compile Include="Assets/TextMesh Pro/Examples &amp; Extras/Scripts/Benchmark03.cs" />
+    <Compile Include="Assets/Scripts/TVMaze/API_Calls/PeopleSearchAPI.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Elements/SettingsSubElement.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/Rendering/UIGradientEditor.cs" />
     <Compile Include="Assets/Heat - Complete Modern UI/Scripts/UI Elements/ModalWindowManagerEditor.cs" />
